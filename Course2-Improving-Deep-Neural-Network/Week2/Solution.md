@@ -16,7 +16,7 @@
     - If the mini-batch size is 1, you lose the benefits of vectorization across examples in the mini-batch.
     - If the mini-batch size is m, you end up with batch gradient descent, which has to process the whole training set before making progress.
 4. Suppose your learning algorithm’s cost ***J***, plotted as a function of the number of iterations, looks like this:
-    ![cost function](Assigment/images/cost_func.png)
+    ![cost function](images/cost_func.png)
 
     - If you’re using mini-batch gradient descent, this looks acceptable. But if you’re using batch gradient descent, something is wrong.
     **Note**: There will be some oscillations when you're using mini-batch gradient descent since there could be some noisy data example in batches. However batch gradient descent always guarantees a lower ***J*** before reaching the optimal.
@@ -31,13 +31,13 @@
     - $\alpha = e^t \times α_0$
     **Note**: This will explode the learning rate rather than decay it.
 7. You use an exponentially weighted average on the London temperature dataset. You use the following to track the temperature: $v_t = \beta v_t−1 + (1 − \beta)\theta_t$. The red line below was computed using $\beta = 0.9$. What would happen to your red curve as you vary $\beta$? (Check the two that apply)
-    ![Temperature](Assigment/images/temp.png)
+    ![Temperature](images/temp.png)
 
     - Increasing $\beta$ will shift the red line slightly to the right.
     - Decreasing $\beta$ will create more oscillation within the red line.
 8. Consider this figure:
 
-    ![Gradient Descent](Assigment/images/gd.png)
+    ![Gradient Descent](images/gd.png)
 
     (1) is gradient descent. (2) is gradient descent with momentum (small β). (3) is gradient descent with momentum (large β)
 
