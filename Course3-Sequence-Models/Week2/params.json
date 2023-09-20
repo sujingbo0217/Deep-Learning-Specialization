@@ -1,0 +1,15 @@
+{
+    "learning_rate": 0.01,
+    "batch_size": 5,
+    "num_epochs": 10,
+
+    "num_layers":  2,
+    "lstm_hidden_size": 512,
+    "encoder_embedding_size": 256,
+    "decoder_embedding_size": 256,
+    "encoder_dropout": 0.2,
+    "decoder_dropout": 0.2,
+
+    "grad_clip": 1,
+    "save_summary_steps": 10
+}
