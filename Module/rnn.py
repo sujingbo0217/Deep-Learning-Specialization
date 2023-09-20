@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+# from load_dataset import CustomDataset
 import torchvision.datasets as datasets
 from torchvision.transforms import ToTensor
 
@@ -65,6 +66,10 @@ test_data = datasets.MNIST(
     train=False,
     transform=ToTensor()
 )
+
+# dataset = CustomDataset(csv_file='example.csv', root_dir='./dataset/example', transform=ToTensor())
+# train_num, test_num = 20000, 5000
+# train_data, test_data = torch.utils.data.random_split(dataset, [train_num, test_num])
 
 train_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
