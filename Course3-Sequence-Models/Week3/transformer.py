@@ -25,12 +25,13 @@ class TransformerEncoderBlock(nn.Module):
 
 
 class TransformerEncoder(nn.Module):
-    def _init__(self, src_vocab_size: int, hidden_size: int, ffn_hidden_size: int, num_head: int, num_block: int, dropout: float):
+    def __init__(self, src_vocab_size: int, hidden_size: int, ffn_hidden_size: int, num_head: int, num_block: int, dropout: float):
         super().__init__()
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(src_vocab_size, hidden_size)
         self.pos_encoding = PositionalEncoding(hidden_size, dropout, )
         self.blocks = nn.Sequential()
+        self.attention_weights = None
         
         for i in range(num_block):
             self.blocks.add_module(f'EncoderBlock{i}', TransformerEncoderBlock(hidden_size, ffn_hidden_size, num_head, dropout))
@@ -75,7 +76,7 @@ class TransformerDecoderBlock(nn.Module):
             key_value = x
         else:
             # Output from previous decoder
-            key_value = torch.concat((state[2][self.i], x), dim=1)
+            key_value = torch.cat((state[2][self.i], x), dim=1)
         state[1][self.i] = key_value
 
         if self.training:
@@ -89,7 +90,7 @@ class TransformerDecoderBlock(nn.Module):
         y = self.addnorm1(x1, x)
 
         # Encoder output shape (batch_size, num_step, num_hidden)
-        x2 = self.attention2(query=y, query=encoder_output, key=encoder_output, masked=None)
+        x2 = self.attention2(query=y, key=encoder_output, value=encoder_output, masked=None)
         y1 = self.addnorm2(x2, y)
 
         # Feed Forward Network
@@ -106,6 +107,7 @@ class TransformerDecoder(nn.Module):
         self.embedding = nn.Embedding(trg_vocab_size, hidden_size)
         self.pos_encoding = PositionalEncoding(hidden_size, dropout, )
         self.blocks = nn.Sequential()
+        self._attention_weights = None
 
         for i in range(num_block):
             self.blocks.add_module(f'DecoderBlock{i}', TransformerDecoderBlock(hidden_size, ffn_hidden_size, num_head, dropout, i))
@@ -115,7 +117,7 @@ class TransformerDecoder(nn.Module):
     def forward(self, x, state):
         x = self.pos_encoding(self.embedding(x) * math.sqrt(self.hidden_size))
         self._attention_weights = [[] * len(self.blocks) for _ in range(2)]
-        
+
         for i, block in enumerate(self.blocks):
             x = block(x, state)
             # Decoder self-attention (with mask) weights

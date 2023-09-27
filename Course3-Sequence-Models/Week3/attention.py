@@ -6,6 +6,7 @@ import torch.nn.functional as F
 class DotProductAttention(nn.Module):
     def __init__(self, dropout: float):
         super().__init__()
+        self.attention_weights = None
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, query, key, value, masked=None):
@@ -31,7 +32,7 @@ class DotProductAttention(nn.Module):
 
         # Mask
         if masked is not None:
-            scaled = scaled.masked_fill(masked==0, float('-1e20'))      # float('-inf')
+            scaled = scaled.masked_fill(masked == 0, float('-1e20'))      # float('-inf')
 
         # Softmax
         self.attention_weights = F.softmax(scaled)
@@ -71,8 +72,6 @@ class MultiHeadAttention(nn.Module):
 
         return self.fc(output)
 
-
-    @staticmethod
     def transpose(self, x):
         # Input x: (batch_size, len_q(or len_kv), hidden_size)
 
@@ -84,7 +83,6 @@ class MultiHeadAttention(nn.Module):
 
         return x
     
-    @staticmethod
     def transpose_concat(self, x):
         # Input x: (batch_size*h, len_q(or len_kv), hidden_size/h)
 
