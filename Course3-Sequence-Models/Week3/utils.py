@@ -1,13 +1,16 @@
 import torch
 import torch.nn as nn
 
+import time
+import numpy as np
 
-class PositionWiseFFN(nn.Module):
+
+class FeedForward(nn.Module):
     def __init__(self, ffn_hidden_size: int, ffn_output_size: int):
         super().__init__()
-        self.dense1 = nn.LazyLinear(ffn_hidden_size)
+        self.dense1 = nn.LazyLinear(ffn_hidden_size)    # (hidden_size, ffn_hidden_size)
         self.relu = nn.ReLU()
-        self.dense2 = nn.LazyLinear(ffn_output_size)
+        self.dense2 = nn.LazyLinear(ffn_output_size)    # (ffn_hidden_size, hidden_size)
 
     def forward(self, x):
         return self.dense2(self.relu(self.dense1(x)))
@@ -47,5 +50,35 @@ class PositionalEncoding(nn.Module):
         self.PE[:, :, 1::2] = torch.cos(X)
 
     def forward(self, x):
+        # x shape (batch_size, num_step, hidden_size)
         x = x + self.PE[:, :max(x.size(1), self.max_len), :].to(x.device)
         return self.dropout(x)
+
+
+class Timer:
+    """Record multiple running times."""
+    def __init__(self):
+        """Defined in :numref:`sec_minibatch_sgd`"""
+        self.times = []
+        self.start()
+
+    def start(self):
+        """Start the timer."""
+        self.tik = time.time()
+
+    def stop(self):
+        """Stop the timer and record the time in a list."""
+        self.times.append(time.time() - self.tik)
+        return self.times[-1]
+
+    def avg(self):
+        """Return the average time."""
+        return sum(self.times) / len(self.times)
+
+    def sum(self):
+        """Return the sum of time."""
+        return sum(self.times)
+
+    def cumsum(self):
+        """Return the accumulated time."""
+        return np.array(self.times).cumsum().tolist()

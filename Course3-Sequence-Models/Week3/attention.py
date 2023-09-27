@@ -1,10 +1,12 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class DotProductAttention(nn.Module):
-    def __init__(self):
+    def __init__(self, dropout: float):
         super().__init__()
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, query, key, value, masked=None):
         """
@@ -32,17 +34,18 @@ class DotProductAttention(nn.Module):
             scaled = scaled.masked_fill(masked==0, float('-1e20'))      # float('-inf')
 
         # Softmax
-        attention_weights = torch.softmax(scaled)
+        self.attention_weights = F.softmax(scaled)
 
         # MatMul2
         # attention_weights shape: (batch_size, len_q, d_v)
-        attention_weights = torch.einsum('nqk,nkd->nqd', attention_weights, value)
+        self.attention_weights = self.dropout(self.attention_weights)
+        self.attention_weights = torch.einsum('nqk,nkd->nqd', self.attention_weights, value)
 
-        return attention_weights
+        return self.attention_weights
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, hidden_size: int, num_head: int):
+    def __init__(self, hidden_size: int, num_head: int, dropout: float):
         super().__init__()
         self.hidden_size = hidden_size
         self.h = num_head
@@ -55,7 +58,7 @@ class MultiHeadAttention(nn.Module):
         self.W_k = nn.LazyLinear(hidden_size, bias=False)
         self.W_v = nn.LazyLinear(hidden_size, bias=False)
         self.fc = nn.LazyLinear(hidden_size, bias=False)
-        self.attention = DotProductAttention()
+        self.attention = DotProductAttention(dropout=dropout)
 
     def forward(self, query, key, value, masked=None):
         # Multi-head Attention - Split embedding into h pieces
