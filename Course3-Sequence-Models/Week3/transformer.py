@@ -44,7 +44,7 @@ class TransformerEncoder(nn.Module):
         # Position Encoding
         x = self.pos_encoding(x)
 
-        self.attention_weights = [] * len(self.blocks)
+        self.attention_weights = [None] * len(self.blocks)
 
         for i, block in enumerate(self.blocks):
             x = block(x, masked)
@@ -67,17 +67,18 @@ class TransformerDecoderBlock(nn.Module):
     def forward(self, x, state):
         """
         state[0]: encoder output
-        state[1]: len=num_block, state[2][self.i] contains representations of the decoded output at the i-th block up to the current time step
+        state[1]: encoder mask length (no use)
+        state[2]: len=num_block, state[2][self.i] contains representations of the decoded output at the i-th block up to the current time step
         """
         encoder_output = state[0]
 
-        if state[1][self.i] is None:
+        if state[2][self.i] is None:
             # Output from encoder
             key_value = x
         else:
             # Output from previous decoder
             key_value = torch.cat((state[2][self.i], x), dim=1)
-        state[1][self.i] = key_value
+        state[2][self.i] = key_value
 
         if self.training:
             batch_size, num_step, _ = x.shape
@@ -114,12 +115,15 @@ class TransformerDecoder(nn.Module):
 
         self.dense = nn.LazyLinear(trg_vocab_size)
 
+    def init_state(self, encoder_output, _):
+        return [encoder_output, _, [None] * len(self.blocks)]
+
     def forward(self, x, state):
         x = self.pos_encoding(self.embedding(x) * math.sqrt(self.hidden_size))
-        self._attention_weights = [[] * len(self.blocks) for _ in range(2)]
+        self._attention_weights = [[None] * len(self.blocks) for _ in range(2)]
 
         for i, block in enumerate(self.blocks):
-            x = block(x, state)
+            x, state = block(x, state)
             # Decoder self-attention (with mask) weights
             self._attention_weights[0][i] = block.attention1.attention.attention_weights
             # Encoder-Decoder self-attention weights

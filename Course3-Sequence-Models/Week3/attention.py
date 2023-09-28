@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
+import math
+from utils import masked_softmax
 
 
 class DotProductAttention(nn.Module):
@@ -28,14 +30,11 @@ class DotProductAttention(nn.Module):
         prod = torch.einsum('nqd,nkd->nqk', query, key)
 
         # Scale
-        scaled = prod / torch.sqrt(d_k)
-
-        # Mask
-        if masked is not None:
-            scaled = scaled.masked_fill(masked == 0, float('-1e20'))      # float('-inf')
+        # scaled: (batch_size, len_q, len_kv)
+        scaled = prod / math.sqrt(d_k)
 
         # Softmax
-        self.attention_weights = F.softmax(scaled)
+        self.attention_weights = masked_softmax(scaled, masked)
 
         # MatMul2
         # attention_weights shape: (batch_size, len_q, d_v)
@@ -48,7 +47,7 @@ class DotProductAttention(nn.Module):
 class MultiHeadAttention(nn.Module):
     def __init__(self, hidden_size: int, num_head: int, dropout: float):
         super().__init__()
-        self.hidden_size = hidden_size
+        self.d_model = hidden_size
         self.h = num_head
         d_head = hidden_size // self.h
 
@@ -67,18 +66,26 @@ class MultiHeadAttention(nn.Module):
         key = self.transpose(self.W_k(key))
         value = self.transpose(self.W_v(value))
 
+        # Mask
+        if masked is not None:
+            # masked = torch.repeat_interleave(masked, scaled.size(1))
+            # scaled = scaled.masked_fill(masked == 0, float('-1e20'))      # float('-inf')
+
+            # On axis 0, copy the first item (scalar or vector) for num_heads times, then copy the next item, and so on
+            masked = torch.repeat_interleave(input=masked, repeats=self.h, dim=0)
+
         output = self.attention(query, key, value, masked)
         output = self.transpose_concat(output)
 
         return self.fc(output)
 
     def transpose(self, x):
-        # Input x: (batch_size, len_q(or len_kv), hidden_size)
+        # Input x: (batch_size, len_q(or len_kv), d_model)
 
-        # (batch_size, h, len_q(or len_kv), hidden_size/h)
+        # (batch_size, h, len_q(or len_kv), d_model/h)
         x = x.view(x.size(0), self.h, x.size(1), -1)
 
-        # (batch_size*h, len_q(or len_kv), hidden_size/h)
+        # (batch_size*h, len_q(or len_kv), d_model/h)
         x = x.view(-1, x.size(2), x.size(3))
 
         return x

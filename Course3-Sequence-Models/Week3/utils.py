@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 import time
 import numpy as np
@@ -51,7 +52,7 @@ class PositionalEncoding(nn.Module):
 
     def forward(self, x):
         # x shape (batch_size, num_step, hidden_size)
-        x = x + self.PE[:, :max(x.size(1), self.max_len), :].to(x.device)
+        x = x + self.PE[:, :min(x.size(1), self.max_len), :].to(x.device)
         return self.dropout(x)
 
 
@@ -59,6 +60,7 @@ class Timer:
     """Record multiple running times."""
     def __init__(self):
         """Defined in :numref:`sec_minibatch_sgd`"""
+        self.tik = None
         self.times = []
         self.start()
 
@@ -82,3 +84,29 @@ class Timer:
     def cumsum(self):
         """Return the accumulated time."""
         return np.array(self.times).cumsum().tolist()
+
+def masked_softmax(X, valid_lens):
+    """Perform softmax operation by masking elements on the last axis.
+
+    Defined in :numref:`sec_attention-scoring-functions`"""
+    # X: 3D tensor, valid_lens: 1D or 2D tensor
+    def _sequence_mask(x, valid_len, value=0.):
+        max_len = x.size(1)
+        mask = torch.arange(max_len, dtype=torch.float32,
+                            device=x.device)[None, :] < valid_len[:, None]
+        x[~mask] = value
+        return x
+
+    if valid_lens is None:
+        return F.softmax(X, dim=-1)
+    else:
+        shape = X.shape
+        if valid_lens.dim() == 1:
+            valid_lens = torch.repeat_interleave(valid_lens, shape[1])
+        else:
+            valid_lens = valid_lens.reshape(-1)
+
+        # On the last axis, replace masked elements with a very large negative
+        # value, whose exponentiation outputs 0
+        X = _sequence_mask(X.reshape(-1, shape[-1]), valid_lens, value=-1e6)
+        return F.softmax(X.reshape(shape), dim=-1)
